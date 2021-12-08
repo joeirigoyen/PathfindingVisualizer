@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/p5.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.dom.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.sound.min.js"></script>
         <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/styles.css') }}">
         <meta charset="utf-8"/>
     </head>
     <body>
-        <script src="../javascript/visualizer.js"></script>
+        <!-- Title -->
         <div class="upper-content">
             <div class="grid-container">
                 <div class="grid-header">
@@ -16,54 +18,77 @@
                         choose from multiple <span class="keyword">algorithms</span> and create your own <span class="keyword">path</span>! 
                     </div>
             </div>
-            <div class="navbar">
-                <ul>
-                    <div class="navbar-elem">
-                        <li>
-                            <span></span>
-                            <span></span>
-                            Algorithms
-                        </li>
+        </div>
+        <!-- Navigation bar -->
+        <div class="navbar">
+            <ul>
+                <li class="dropdown">
+                    <span></span>
+                    <span></span>
+                    <a class="dropbtn">Algorithms</a>
+                    <div class="dropdown-content">
+                        <a>Dijkstra's</a>
+                        <a>A*</a>
+                        <a>BFS</a>
+                        <a>DFS</a>
+                        <a>Prim's</a>
+                        <a>Greedy</a>
                     </div>
-                    <div class="navbar-elem">
-                        <li>
-                            <span></span>
-                            <span></span>
-                            Nodes
-                        </li>
+                </li>
+                <li class="dropdown">
+                    <span></span>
+                    <span></span>
+                    <a class="dropbtn">Nodes</a>
+                    <div class="dropdown-content">
+                        <a>Starting point</a>
+                        <a>Destination</a>
+                        <a>Obstacle</a>
                     </div>
-                    <div class="navbar-elem">
-                        <li>
-                            <span></span>
-                            <span></span>
-                            Clear
-                        </li>
-                    </div>
-                    <div class="navbar-elem">
-                        <li>
-                            <span></span>
-                            <span></span>
-                            Start
-                        </li>
-                    </div>
-                    <div class="navbar-elem">
-                        <li>
-                            <span></span>
-                            <span></span>
-                            End
-                        </li>
-                    </div>
-                    <div class="navbar-elem">
-                        <li>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            About
-                        </li>
-                    </div>
-                </ul>
+                </li>
+                <li>
+                    <span></span>
+                    <span></span>
+                    Clear
+                </li>
+                <li>
+                    <span></span>
+                    <span></span>
+                    Start
+                </li>
+                <li>
+                    <span></span>
+                    <span></span>
+                    End
+                </li>
+                <li onclick="location.href='https://github.com/joeirigoyen/PathfindingVisualizer'">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    About
+                </li>
+            </ul>
+        </div>
+        <!-- Sidenotes -->
+        <div class="sidenotes">
+            <div class="flex-container">
+                <div class="square" style="background-color: #002385;"></div>
+                <span class="sidenote">Starting point</span>
+                <div class="square" style="background-color: #db00d8;"></div>
+                <span class="sidenote">Destination</span>
+                <div class="square" style="background-color: #121326;"></div>
+                <span class="sidenote">Obstacle</span>
+                <div class="square" style="background-color: #85caff;"></div>
+                <span class="sidenote">Visited node</span>
+                <div class="square" style="background-color: #179aff;"></div>
+                <span class="sidenote">Unvisited node</span>
+                <div class="square" style="background-color: #ffa600;"></div>
+                <span class="sidenote">Path</span>
             </div>
+        </div>
+        <div id="visualizer" style="position: relative;">
+            <!-- Import javascript files -->
+            <script src="{{ url_for('static', filename='js/sketch.js') }}"></script>
         </div>
     </body>
 </html>
