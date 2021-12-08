@@ -1,45 +1,66 @@
-/* Initialize columns and rows */
-let cols = 65;
-let rows = 25;
-/* Create a grid to  store the nodes' data */
-let grid = new Array(cols);
-/* Initialize square size */
-let squareSize = 28;
-let gridWidth = cols * squareSize;
-let gridHeight = rows * squareSize;
+/* Initialize canvas size */
+let canvasWidth = 1800;
+let canvasHeight = 700;
+/* Create a grid to store the nodes' data */
+let graph = [];
 
-class Node {
-    constructor(i, j) {
-        /* Positions */
-        this.x = i;
-        this.y = j;
-        /* Set radius of square */
-        this.r = squareSize;
-        this.color = [212, 238, 255];
-        /*Heuristics*/
-        this.f = 0;
-        this.g = 0;
-        this.h = 0;
-    }
-}
+/* Initialize square size */
+let squareSize = 25;
+
+/* Initialize columns and rows */
+let cols = canvasWidth / squareSize;
+let rows = canvasHeight / squareSize;
 
 function setup() {
     // Create canvas
-    createCanvas(gridWidth, gridHeight);
+    createCanvas(canvasWidth, canvasHeight);
     // Initialize grid
+    createGraph();
 }
 
 function draw() {
     background(255);
-    for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
+    showGraph();
+}
+
+class Node {
+    constructor(col, row) {
+        this.size = canvasWidth / cols;
+        this.color = 255;
+
+        this.x = col * this.size;
+        this.y = row * this.size;
+
+        this.show = function () {
             noStroke();
-            rect(x * squareSize, y * squareSize, squareSize, squareSize);
-            if (x == 0 && y == 0) {
-                fill(255, 8, 57);
+            strokeWeight(2);
+            if (mouseX >= this.x && mouseX <= this.x + this.size && mouseY >= this.y && mouseY <= this.y + this.size) {
+                fill(255, 255, 255);
             } else {
-                fill(212, 238, 255);
+                fill(0, 0, 0);
             }
+            rect(this.x, this.y, this.size, this.size);
+        };
+
+        this.trigger = function () {
+            console.log('A pixel was triggered');
+        };
+    }
+}
+
+function showGraph() {
+    for (let i = 0; i < graph.length; i++) {
+        for (let j = 0; j < graph[i].length; j++) {
+            graph[i][j].show();
         }
     }
+}
+
+function createGraph() {
+	for(let i = 0; i < cols; i++) {
+        graph[i] = new Array()
+        for (let j = 0; j < rows; j++) {
+            graph[i][j] = new Node(i, j);
+        }
+	}
 }

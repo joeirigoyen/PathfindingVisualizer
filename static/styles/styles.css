@@ -17,18 +17,17 @@
 body {
     overflow: hidden;
     margin: 0;
+    background-color: #141414;
 }
 
 canvas {
     padding: 0;
     margin: auto;
     display: block;
-    width: 800px;
-    height: 600px;
     position: absolute;
-    top: 22.5%;
+    top: 25%;
     bottom: 0;
-    right: 2.8%;
+    right: 3.1%;
     box-shadow: 0 0 35px rgb(0, 0, 0, 0.5);
 }
 
@@ -231,11 +230,24 @@ li.active {
 .sidenote {
     font-family: 'Fira Code', monospace;
     font-size: large;
-    color: #0d151c;
+    color: #dff0ff;
+    text-shadow: 1px 1px 20px rgb(255, 255, 255);
     text-align: left;
     margin-right: 25px;
     text-transform: capitalize;
+    user-select: none;
     letter-spacing: normal;
+    transition: 0.2s;
+}
+
+.hoverable {
+    transition: 0.2s;
+}
+
+.sidenote .hoverable:hover {
+    color: #ffda33;
+    font-size: larger;  
+    text-shadow: 1px 1px 25px rgb(255, 255, 255);
 }
 
 @keyframes neon {
