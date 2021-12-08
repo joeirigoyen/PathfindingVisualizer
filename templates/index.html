@@ -6,13 +6,14 @@
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.sound.min.js"></script>
         <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/styles.css') }}">
         <meta charset="utf-8"/>
+        <title>Pathfinding Algorithms Visualizer</title>
     </head>
     <body>
         <!-- Title -->
         <div class="upper-content">
             <div class="grid-container">
                 <div class="grid-header">
-                    <h1><span>Pathfinding Algorithms Visualizer</span></h1>
+                    <h1><span id="titlename">Pathfinding Algorithms Visualizer</span></h1>
                 </div>
                     <div class="grid-subheader">
                         choose from multiple <span class="keyword">algorithms</span> and create your own <span class="keyword">path</span>! 
@@ -27,15 +28,15 @@
                     <span></span>
                     <a class="dropbtn">Algorithms</a>
                     <div class="dropdown-content">
-                        <a>Dijkstra's</a>
-                        <a>A*</a>
-                        <a>BFS</a>
-                        <a>DFS</a>
-                        <a>Prim's</a>
-                        <a>Greedy</a>
+                        <a onclick="chooseAlgorithm(0)">Dijkstra's</a>
+                        <a onclick="chooseAlgorithm(1)">A*</a>
+                        <a onclick="chooseAlgorithm(2)">BFS</a>
+                        <a onclick="chooseAlgorithm(3)">DFS</a>
+                        <a onclick="chooseAlgorithm(4)">Prim's</a>
+                        <a onclick="chooseAlgorithm(5)">Greedy</a>
                     </div>
                 </li>
-                <li>
+                <li onclick="clearGraph()">
                     <span></span>
                     <span></span>
                     Clear
@@ -62,15 +63,17 @@
         <!-- Sidenotes -->
         <div class="sidenotes">
             <div class="flex-container">
-                <div class="square" style="background-color: #002385;"></div>
-                <span class="sidenote"><span class="hoverable">Starting point</span></span>
+                <div class="square" style="background-color: #2194ff;"></div>
+                <span class="sidenote"><span class="hoverable" onclick="chooseStart()">Starting point</span></span>
                 <div class="square" style="background-color: #db00d8;"></div>
-                <span class="sidenote"><span class="hoverable">Destination</span></span>
+                <span class="sidenote"><span class="hoverable" onclick="chooseDestination()">Destination</span></span>
                 <div class="square" style="background-color: #e0e0e0;"></div>
-                <span class="sidenote"><span class="hoverable">Obstacle</span></span>
-                <div class="square" style="background-color: #85caff;"></div>
+                <span class="sidenote"><span class="hoverable" onclick="chooseObstacles()">Obstacle</span></span>
+                <div class="square" style="background-color: #000000;"></div>
+                <span class="sidenote"><span class="hoverable" onclick="chooseEraser()">Erase</span></span>
+                <div class="square" style="background-color: #ff919a;"></div>
                 <span class="sidenote">Visited node</span>
-                <div class="square" style="background-color: #179aff;"></div>
+                <div class="square" style="background-color: #ff3344;"></div>
                 <span class="sidenote">Unvisited node</span>
                 <div class="square" style="background-color: #ffa600;"></div>
                 <span class="sidenote">Path</span>
