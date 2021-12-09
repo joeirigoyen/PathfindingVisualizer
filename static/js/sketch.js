@@ -4,15 +4,23 @@ let canvasHeight = 700;
 
 /* Create a grid to store the nodes' data */
 let graph = [];
+let starts = 0;
 
 /* Editing variables */
+let randomStartX, randomStartY, randomEndX, randomEndY;
 let selectedNodeType = 2; /* 0 = start 1 = end 2 = obstacle */
-let lastStart = null; // Last node that was in start state
-let lastEnd = null;   // Last node that was in end state
+let currentStartNode = null; // Last node that was in start state
+let currentEndNode = null;   // Last node that was in end state
 let started = false;
 
 /* Algorithm variables */
-let selectedAlgorithm = 0; // 0 = Dijkstra's | 1 = A* | 2 = BFS | 3 = DFS | 4 = Prim's | 5 = Greedy
+let path = [] // Path followed by the algorithm
+let selectedAlgorithm = null; // 0 = Dijkstra's | 1 = A* | 2 = BFS | 3 = DFS | 4 = Prim's | 5 = Greedy
+let currentNode = null; // Current node being explored
+let queue = []; // BFS queue
+let closedNodes = [];
+let finished = false;
+let pathLine = undefined;
 
 /* Initialize square size */
 let squareSize = 25;
@@ -34,6 +42,8 @@ let pathColor = [55, 166, 0];
 /* Initialize node attributes */
 class Node {
     constructor(col, row) {
+        this.c = col;
+        this.r = row;
         this.size = canvasWidth / cols;
         this.color = [0, 0, 0];
         this.assigned = false;
@@ -42,22 +52,58 @@ class Node {
         this.x = col * this.size;
         this.y = row * this.size;
 
+        this.parent = undefined;
         this.neighbors = [];
 
         this.show = function () {
             noStroke();
             if (mouseX >= this.x && mouseX <= this.x + this.size && mouseY >= this.y && mouseY <= this.y + this.size) {
-                if (!this.assigned) {
-                    this.state = selectedNodeType;
+                if (!started) {
+                    if (!this.assigned) {
+                        this.state = selectedNodeType;
+                    }
                 }
             } else {
-                if (!this.assigned) {
-                    this.state = 6;
+                if (!started) {
+                    if (!this.assigned) {
+                        this.state = 6;
+                    }
                 }
             }
             this.changeColor();
             rect(this.x, this.y, this.size, this.size, 10);
         };
+
+        this.updateNeighbors = function () {
+            // Left neighbor
+            if (this.c > 0) {
+                let node = graph[this.c - 1][this.r];
+                if (node.state != 2) {
+                    this.neighbors.push(node);
+                }
+            }
+            // Upper neighbor
+            if (this.r > 0) {
+                let node = graph[this.c][this.r - 1];
+                if (node.state != 2) {
+                    this.neighbors.push(node);
+                }
+            }
+            // Right neighbor
+            if (this.c < cols - 1) {
+                let node = graph[this.c + 1][this.r];
+                if (node.state != 2) {
+                    this.neighbors.push(node);
+                }
+            }
+            // Lower neighbor
+            if (this.r < rows - 1) {
+                let node = graph[this.c][this.r + 1];
+                if (node.state != 2) {
+                    this.neighbors.push(node);
+                }
+            }
+        }
     }
 
     changeColor() {
@@ -86,43 +132,45 @@ class Node {
             case 7:
                 this.color = hoverColor;
                 break;
-
         }
         fill(this.color);
-    }
-}
-
-function createGraph() {
-    for (let i = 0; i < cols; i++) {
-        graph[i] = new Array()
-        for (let j = 0; j < rows; j++) {
-            graph[i][j] = new Node(i, j);
-        }
-    }
-}
-
-function showGraph() {
-    for (let i = 0; i < graph.length; i++) {
-        for (let j = 0; j < graph[i].length; j++) {
-            graph[i][j].show();
-        }
     }
 }
 
 function setup() {
     // Create canvas
     createCanvas(canvasWidth, canvasHeight);
+    // Initialize random positions for start and end nodes
+    randomStartX = randInt(0, cols);
+    randomStartY = randInt(0, rows);
+    randomEndX = randInt(0, cols);
+    randomEndY = randInt(0, rows);
     // Initialize graph
     createGraph();
+    // Draw start and end nodes
+    currentStartNode = graph[randomStartX][randomStartY];
+    currentEndNode = graph[randomEndX][randomEndY];
+    graph[randomStartX][randomStartY].state = 0;
+    graph[randomStartX][randomStartY].assigned = true;
+    graph[randomEndX][randomEndY].state = 1;
+    graph[randomEndX][randomEndY].assigned = true;
 }
 
 function draw() {
     // Set background color
     background(0);
-    // Display nodes in graph
+    // Activate when started
+    if (started) {
+        if (selectedAlgorithm == 2) {
+            run_bfs();
+        }
+    }
+    // Display nodes from graph
     showGraph();
+    drawPath();
 }
 
+/* UI Functions */
 function chooseStart() {
     selectedNodeType = 0;
 }
@@ -141,7 +189,6 @@ function chooseEraser() {
 
 function chooseAlgorithm(algNum) {
     selectedAlgorithm = algNum;
-    console.log(selectedAlgorithm);
     let newTitle = "";
     switch (selectedAlgorithm) {
         case 0:
@@ -162,12 +209,112 @@ function chooseAlgorithm(algNum) {
         case 5:
             newTitle = "Greedy Algorithm Visualizer"
             break;
+        default:
+            newTitle = document.getElementById('titlename').textContent;
     }
     document.getElementById('titlename').textContent = newTitle;
 }
 
+function start() {
+    // If simulation hasn't started
+    if (!started) {
+        // Clean graph except for start, end and obstacle nodes
+        if (starts > 0) {
+            restartGraph();
+        }
+        // Both the start node and the end node must be already chosen
+        if (currentStartNode != null && currentEndNode != null) {
+            // Set finished to false
+            finished = false;
+            // Start neighbors
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    graph[i][j].updateNeighbors();
+                }
+            }
+            // Make initial algorithm operations
+            switch (selectedAlgorithm) {
+                case 0:
+                    break;
+                case 1:
+                    break;
+                case 2: // BFS
+                    init_bfs();
+                    loop();
+                    break;
+                case 3:
+                    break;
+                case 4:
+                    break;
+                case 5:
+                    break;
+                default:
+                    alert("You need to choose an algorithm!")
+                    return;
+            }
+            starts++;
+            started = true;
+        } else {
+            alert("You need a start node and a destination node!")
+        }
+    }
+}
+
+
+function end() {
+    // If algorithm has already started
+    if (started) {
+        // End the algorithm
+        started = false;
+        // Let program receive input again
+        loop();
+    }
+}
+
+/* Graph manipulation functions */
+function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
+function createGraph() {
+    for (let i = 0; i < cols; i++) {
+        graph[i] = new Array()
+        for (let j = 0; j < rows; j++) {
+            graph[i][j] = new Node(i, j);
+        }
+    }
+}
+
+function showGraph() {
+    for (let i = 0; i < graph.length; i++) {
+        for (let j = 0; j < graph[i].length; j++) {
+            graph[i][j].show();
+        }
+    }
+}
+
+function restartGraph() {
+    if (!started) {
+        // Set all nodes as idle
+        for (let i = 0; i < cols; i++) {
+            for (let j = 0; j < rows; j++) {
+                if (graph[i][j].state != 0 && graph[i][j].state != 1 && graph[i][j].state != 2) {
+                    graph[i][j].state = 6;
+                    graph[i][j].assigned = false;
+                    graph[i][j].neighbors = [];
+                }
+            }
+        }
+        // Reset queues and sets
+        queue = [];
+        closedNodes = [];
+    }
+}
+
 function clearGraph() {
     if (!started) {
+        path = [];
+        // Set all nodes as idle
         for (let i = 0; i < cols; i++) {
             for (let j = 0; j < rows; j++) {
                 graph[i][j].state = 6;
@@ -175,40 +322,151 @@ function clearGraph() {
                 graph[i][j].neighbors = [];
             }
         }
+        // Reset queues and sets
+        queue = [];
+        closedNodes = [];
+        // Unassign start and end nodes
+        currentStartNode = null;
+        currentEndNode = null;
     }
 }
 
+/* Algorithm functions */
+// BFS
+
+function init_bfs() {
+    // Empty the queue before using it
+    queue = [];
+    // Add root node to queue
+    queue.push(currentStartNode);
+}
+
+function run_bfs() {
+    if (queue.length > 0) {
+        // Set current node
+        currentNode = queue[0];
+        // Add current node to closed nodes
+        closedNodes.push(currentNode);
+        // Change node's state to visited
+        if (currentNode.state != 0 && currentNode.state != 1) {
+            currentNode.state = 4;
+            currentNode.assigned = true;
+        }
+        // If current node is the destination, end search
+        if (currentNode == currentEndNode) {
+            finished = true;
+            queue = [];
+            started = false;
+            return;
+        }
+        // Else, add valid neighbors to queue
+        for (neighbor of currentNode.neighbors) {
+            // If a neighbor is not in closed set
+            if (!closedNodes.includes(neighbor)) {
+                // Add neighbor to queue
+                queue.push(neighbor);
+                // Add neighbor to closed set
+                closedNodes.push(neighbor);
+                // Set node's parent
+                neighbor.parent = currentNode;
+                // Set node's state to unvisited
+                if (neighbor.state != 0 && neighbor.state != 1) {
+                    neighbor.state = 3;
+                    neighbor.assigned = true;
+                }
+            }
+        }
+        // Remove current node from queue
+        queue.shift();
+    } else {
+        console.log("No solution.");
+        started = false;
+    }
+}
+
+function drawPath() {
+    // Empty path
+    path = [];
+    // Only check nodes after first start
+    if (starts > 0) {
+        // Temporary value to store current node and it's parents
+        let temp = currentNode;
+        path.push(temp);
+        // While there are still parents
+        while (true) {
+            if (temp.parent === undefined) {
+                break;
+            } else {
+                // Add parents to path
+                path.push(temp.parent);
+                temp = temp.parent;
+            }
+        }
+    }
+    // After adding cells to path, draw line between nodes
+    if (path.length > 0) {
+        noFill();
+        stroke(pathColor);
+        strokeWeight(4);
+        beginShape();
+        for (node of path) {
+            vertex(node.x + node.size / 2, node.y + node.size / 2);
+        }
+        endShape();
+    }  else {
+        noFill();
+        stroke(startColor);
+        strokeWeight(4);
+        beginShape();
+        vertex(currentStartNode.x + currentStartNode.size / 2, currentStartNode.y + currentStartNode.size / 2);
+        endShape();
+    }  
+}
+
+/* Events */
+
 function mousePressed() {
     if (!started) {
+        // Clean graph except for start, end and obstacle nodes
+        if (starts > 0) {
+            restartGraph();
+        }
         for (let i = 0; i < cols; i++) {
             for (let j = 0; j < rows; j++) {
                 if (mouseX >= graph[i][j].x && mouseX <= graph[i][j].x + graph[i][j].size && mouseY >= graph[i][j].y && mouseY <= graph[i][j].y + graph[i][j].size) {
                     // Avoid duplicate start nodes
                     if (selectedNodeType == 0) {
-                        if (lastStart != null) {
-                            lastStart.state = 6;
-                            lastStart.assigned = false;
+                        if (currentStartNode != null) {
+                            currentStartNode.state = 6;
+                            currentStartNode.assigned = false;
                         }
-                        lastStart = graph[i][j];
-                        lastStart.state = selectedNodeType;
-                        lastStart.assigned = true;
+                        currentStartNode = graph[i][j];
+                        currentStartNode.state = selectedNodeType;
+                        currentStartNode.assigned = true;
                         // Avoid duplicate end nodes
                     } else if (selectedNodeType == 1) {
-                        if (lastEnd != null) {
-                            lastEnd.state = 6;
-                            lastEnd.assigned = false;
+                        if (currentEndNode != null) {
+                            currentEndNode.state = 6;
+                            currentEndNode.assigned = false;
                         }
-                        lastEnd = graph[i][j];
-                        lastEnd.state = selectedNodeType;
-                        lastEnd.assigned = true;
+                        currentEndNode = graph[i][j];
+                        currentEndNode.state = selectedNodeType;
+                        currentEndNode.assigned = true;
                         // Add obstacle node
                     } else {
-                        graph[i][j].state = selectedNodeType;
+                        // Check if one of the cells is a start node or an end node
+                        if (graph[i][j].state == 0) {
+                            currentStartNode = null;
+                        } else if (graph[i][j].state == 1) {
+                            currentEndNode = null;
+                        }
+                        // Add / remove the node's assigned state depending on the current selection
                         if (selectedNodeType == 6) {
                             graph[i][j].assigned = false;
                         } else {
                             graph[i][j].assigned = true;
                         }
+                        graph[i][j].state = selectedNodeType;
                     }
                 }
             }
@@ -222,13 +480,19 @@ function mouseDragged() {
             for (let i = 0; i < cols; i++) {
                 for (let j = 0; j < rows; j++) {
                     if (mouseX >= graph[i][j].x && mouseX <= graph[i][j].x + graph[i][j].size && mouseY >= graph[i][j].y && mouseY <= graph[i][j].y + graph[i][j].size) {
-                        // Add obstacle nodes
-                        graph[i][j].state = selectedNodeType;
+                        // Check if one of the cells is a start node or an end node
+                        if (graph[i][j].state == 0) {
+                            currentStartNode = null;
+                        } else if (graph[i][j].state == 1) {
+                            currentEndNode = null;
+                        }
+                        // Add obstacle/empty nodes
                         if (selectedNodeType == 6) {
                             graph[i][j].assigned = false;
                         } else {
                             graph[i][j].assigned = true;
                         }
+                        graph[i][j].state = selectedNodeType;
                     }
                 }
             }
