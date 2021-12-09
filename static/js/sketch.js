@@ -12,6 +12,7 @@ let selectedNodeType = 2; /* 0 = start 1 = end 2 = obstacle */
 let currentStartNode = null; // Last node that was in start state
 let currentEndNode = null;   // Last node that was in end state
 let started = false;
+let canShowPath = false;
 
 /* Algorithm variables */
 let path = [] // Path followed by the algorithm
@@ -82,16 +83,16 @@ class Node {
                     this.neighbors.push(node);
                 }
             }
-            // Upper neighbor
-            if (this.r > 0) {
-                let node = graph[this.c][this.r - 1];
+            // Right neighbor
+            if (this.c < cols - 1) {
+                let node = graph[this.c + 1][this.r];
                 if (node.state != 2) {
                     this.neighbors.push(node);
                 }
             }
-            // Right neighbor
-            if (this.c < cols - 1) {
-                let node = graph[this.c + 1][this.r];
+            // Upper neighbor
+            if (this.r > 0) {
+                let node = graph[this.c][this.r - 1];
                 if (node.state != 2) {
                     this.neighbors.push(node);
                 }
@@ -163,11 +164,15 @@ function draw() {
     if (started) {
         if (selectedAlgorithm == 2) {
             run_bfs();
+        } else if (selectedAlgorithm == 3) {
+            run_dfs();
         }
     }
     // Display nodes from graph
     showGraph();
-    drawPath();
+    if (canShowPath) {
+        drawPath();
+    }
 }
 
 /* UI Functions */
@@ -218,13 +223,11 @@ function chooseAlgorithm(algNum) {
 function start() {
     // If simulation hasn't started
     if (!started) {
-        // Clean graph except for start, end and obstacle nodes
-        if (starts > 0) {
-            restartGraph();
-        }
+
         // Both the start node and the end node must be already chosen
         if (currentStartNode != null && currentEndNode != null) {
             // Set finished to false
+            started = true;
             finished = false;
             // Start neighbors
             for (let i = 0; i < cols; i++) {
@@ -233,6 +236,7 @@ function start() {
                 }
             }
             // Make initial algorithm operations
+            canShowPath = true;
             switch (selectedAlgorithm) {
                 case 0:
                     break;
@@ -243,6 +247,8 @@ function start() {
                     loop();
                     break;
                 case 3:
+                    init_bfs();
+                    loop();
                     break;
                 case 4:
                     break;
@@ -250,10 +256,11 @@ function start() {
                     break;
                 default:
                     alert("You need to choose an algorithm!")
+                    canShowPath = false;
+                    started = false;
                     return;
             }
             starts++;
-            started = true;
         } else {
             alert("You need a start node and a destination node!")
         }
@@ -295,6 +302,11 @@ function showGraph() {
 
 function restartGraph() {
     if (!started) {
+        // Delete path
+        canShowPath = false;
+        // Reset queues and sets
+        queue = [];
+        closedNodes = [];
         // Set all nodes as idle
         for (let i = 0; i < cols; i++) {
             for (let j = 0; j < rows; j++) {
@@ -305,15 +317,14 @@ function restartGraph() {
                 }
             }
         }
-        // Reset queues and sets
-        queue = [];
-        closedNodes = [];
     }
 }
 
 function clearGraph() {
+    path = [];
     if (!started) {
-        path = [];
+        // Delete path
+        canShowPath = false;
         // Set all nodes as idle
         for (let i = 0; i < cols; i++) {
             for (let j = 0; j < rows; j++) {
@@ -328,6 +339,7 @@ function clearGraph() {
         // Unassign start and end nodes
         currentStartNode = null;
         currentEndNode = null;
+        clear();
     }
 }
 
@@ -384,6 +396,47 @@ function run_bfs() {
     }
 }
 
+function run_dfs() {
+    // If queue's length is more than 0
+    if (queue.length > 0) {
+        // Get last element from queue
+        currentNode = queue[queue.length - 1];
+        closedNodes.push(currentNode);
+        // Change node's state to visited
+        if (currentNode.state != 0 && currentNode.state != 1) {
+            currentNode.state = 4;
+            currentNode.assigned = true;
+        }
+        // Check if current node is destination
+        if (currentNode == currentEndNode) {
+            finished = true;
+            queue = [];
+            started = false;
+            return;
+        }
+        // Remove last element
+        let currentNodeIndex = queue.map(function (item) {return item;}).indexOf(currentNode);
+        queue.splice(currentNodeIndex, 1);
+        // Add neighbors to queue
+        for (neighbor of currentNode.neighbors) {
+            if (!closedNodes.includes(neighbor)) {
+                queue.push(neighbor);
+                closedNodes.push(neighbor);
+                // Set node's state to unvisited
+                if (neighbor.state != 0 && neighbor.state != 1) {
+                    neighbor.state = 3;
+                    neighbor.assigned = true;
+                }
+                neighbor.parent = currentNode;
+            }
+        }
+    } else {
+        console.log("No solution.");
+        started = false;
+    }
+}
+
+
 function drawPath() {
     // Empty path
     path = [];
@@ -407,20 +460,13 @@ function drawPath() {
     if (path.length > 0) {
         noFill();
         stroke(pathColor);
-        strokeWeight(4);
+        strokeWeight(8);
         beginShape();
         for (node of path) {
             vertex(node.x + node.size / 2, node.y + node.size / 2);
         }
         endShape();
-    }  else {
-        noFill();
-        stroke(startColor);
-        strokeWeight(4);
-        beginShape();
-        vertex(currentStartNode.x + currentStartNode.size / 2, currentStartNode.y + currentStartNode.size / 2);
-        endShape();
-    }  
+    }
 }
 
 /* Events */
