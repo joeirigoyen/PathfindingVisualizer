@@ -2,16 +2,21 @@
 let cnv;
 let canvasWidth = 1900;
 let canvasHeight = 969;
+let subtitle = document.getElementById('title2').innerHTML;
 
 /* Create a grid to store the nodes' data */
 let graph = [];
 let starts = 0;
+let exploredNodes = 0;
+let startTime = 0.0;
+let endTime = 0.0;
+let timePassed = 0.0;
 
 /* Editing variables */
 let randomStartX, randomStartY, randomEndX, randomEndY;
 let selectedNodeType = 2; /* 0 = start 1 = end 2 = obstacle */
-let currentStartNode = null; // Last node that was in start state
-let currentEndNode = null;   // Last node that was in end state
+let startNode = null; // Last node that was in start state
+let endNode = null;   // Last node that was in end state
 let started = false;
 let canShowPath = false;
 
@@ -198,6 +203,9 @@ function draw() {
     background(0);
     // Activate when started
     if (started) {
+        // Start timer
+        startTime = performance.now();
+        // Run a step of the selected algorithm
         if (selectedAlgorithm === 0) {
             run_dijsktra();
         } else if (selectedAlgorithm === 1) {
@@ -209,6 +217,11 @@ function draw() {
         } else if (selectedAlgorithm === 4) {
             run_greedy();
         }
+        // End timer
+        endTime = performance.now();
+        timePassed += endTime - startTime;
+        // Display info in document
+        displayInfo();
     }
     // Display nodes from graph
     showGraph();
@@ -248,8 +261,8 @@ function randomizeMainPoints() {
     randomEndX = randInt(0, cols);
     randomEndY = randInt(0, rows);
     // Draw start and end nodes
-    currentStartNode = graph[randomStartX][randomStartY];
-    currentEndNode = graph[randomEndX][randomEndY];
+    startNode = graph[randomStartX][randomStartY];
+    endNode = graph[randomEndX][randomEndY];
     graph[randomStartX][randomStartY].state = 0;
     graph[randomStartX][randomStartY].assigned = true;
     graph[randomEndX][randomEndY].state = 1;
@@ -274,6 +287,10 @@ function chooseEraser() {
     selectedNodeType = 6;
 }
 
+function displayInfo() {
+    document.getElementById("title2").innerHTML = "Explored <span class='keyword'>" + exploredNodes + "</span> nodes in <span class='keyword'>" + timePassed.toFixed(1) + "</span> milliseconds.";
+}
+
 // Change the algorithm to be run depending on the selection under the Algorithms tab in the DOM
 function chooseAlgorithm(algNum) {
     if (!started) {
@@ -288,7 +305,7 @@ function chooseAlgorithm(algNum) {
             break;
         case 1:
             newTitle = "A* Algorithm Visualizer"
-            newSubtitle = "Specially useful in complex paths, considers the distance between each node and the starting point, as well as the destination. Used when the destination's location is known.";
+            newSubtitle = "Specially useful in complex paths, considers the distance between each node, as well as tthe destination. It guarantees the shortest path.";
             break;
         case 2:
             newTitle = "BFS Algorithm Visualizer"
@@ -300,7 +317,7 @@ function chooseAlgorithm(algNum) {
             break;
         case 4:
             newTitle = "Greedy Algorithm Visualizer"
-            newSubtitle = "Greedy best-first search takes into account only the distance between each node and the destination, a little less optimal than A* in complex paths.";
+            newSubtitle = "Greedy best-first search takes into account only the distance between each node and the destination, does not guarantee the shortest path but is incredibly fast.";
             break;
         default:
             newTitle = document.getElementById('titlename').textContent;
@@ -315,10 +332,15 @@ function start() {
     // If simulation hasn't been started yet
     if (!started) {
         // Both the start node and the end node must be already chosen
-        if (currentStartNode != null && currentEndNode != null) {
+        if (startNode != null && endNode != null) {
             // Set finished to false
             started = true;
             finished = false;
+            exploredNodes = 0;
+            // Reset time measure
+            timePassed = 0.0;
+            startTime = 0.0;
+            endTime = 0.0;
             // Reset queue and closed set
             queue = [];
             closedNodes = [];
@@ -326,6 +348,7 @@ function start() {
             for (let i = 0; i < cols; i++) {
                 for (let j = 0; j < rows; j++) {
                     graph[i][j].updateNeighbors();
+                    graph[i][j].parent = undefined;
                 }
             }
             // Make initial algorithm operations
@@ -388,6 +411,8 @@ function showGraph() {
 // Set every node's state to idle except for obstacle, start and destination nodes
 function restartGraph() {
     if (!started) {
+        // Reset subtitle
+        document.getElementById("title2").innerHTML = subtitle;
         // Delete path
         canShowPath = false;
         // Reset queues and sets
@@ -431,8 +456,8 @@ function clearGraph() {
         queue = [];
         closedNodes = [];
         // Unassign start and end nodes
-        currentStartNode = null;
-        currentEndNode = null;
+        startNode = null;
+        endNode = null;
         clear();
     }
 }
@@ -462,13 +487,17 @@ function removeObstacles() {
 }
 
 function getDistance(n1, n2) {
-    // Euclidean
-    let x_distance = Math.pow(n2.c - n1.c, 2);
-    let y_distance = Math.pow(n2.r - n1.r, 2);
-    // Cartesian
-    /* let x_distance = Math.abs(n1.c - n2.c);
-    let y_distance = Math.abs(n1.r - n2.r); */
-    return x_distance + y_distance;
+    // Euclidean (use on Dijsktra to simulate weights)
+    if (selectedAlgorithm == 0) {
+        let x_distance = Math.pow(n2.c - n1.c, 2);
+        let y_distance = Math.pow(n2.r - n1.r, 2);
+        return Math.sqrt(x_distance + y_distance);
+    } else {
+        // Cartesian
+        let x_distance = Math.abs(n1.c - n2.c);
+        let y_distance = Math.abs(n1.r - n2.r);
+        return x_distance + y_distance;
+    }
 }
 
 function markState(node, state) {
@@ -476,6 +505,10 @@ function markState(node, state) {
     if (node.state != 0 && node.state != 1) {
         node.state = state;
         node.assigned = true;
+    }
+    // Increase explored nodes if state is 3
+    if (state === 3) {
+        exploredNodes++;
     }
 }
 
@@ -486,11 +519,11 @@ function init_dijkstra() {
     lowestNode = undefined;
     dScore = Infinity;
     // Set start node's d score to 0
-    currentStartNode.d = 0;
+    startNode.d = 0;
     // Add every node from the graph to the queue
     for (let i = 0; i < graph.length; i++) {
         for (let j = 0; j < graph[i].length; j++) {
-            if (graph[i][j] !== currentStartNode) {
+            if (graph[i][j] !== startNode) {
                 graph[i][j].d = Infinity;
             }
             queue.push(graph[i][j]);
@@ -518,7 +551,7 @@ function run_dijsktra() {
             started = false;
         }
         // Check if current node is already the destination
-        if (currentNode === currentEndNode) {
+        if (currentNode === endNode) {
             finished = true;
             queue = [];
             started = false;
@@ -537,7 +570,7 @@ function run_dijsktra() {
                 markState(neighbor, 3);
             }
             // Get d score from current node to neighbor
-            dScore = currentNode.d + getDistance(neighbor, currentStartNode);
+            dScore = currentNode.d + getDistance(neighbor, startNode);
             // If this d score is lower than the neighbor's d score, set the neighbor's d score to the current d score
             if (dScore < neighbor.d) {
                 neighbor.d = dScore;
@@ -550,10 +583,10 @@ function run_dijsktra() {
 // A*/BFS/DFS/Greedy queue/stack initialization
 function init_algorithm() {
     // Add root node to queue
-    queue.push(currentStartNode);
+    queue.push(startNode);
     // If the algorithm is DFS or BFS, add starting point to closed set
     if (selectedAlgorithm == 2 || selectedAlgorithm == 3) {
-        closedNodes.push(currentStartNode);
+        closedNodes.push(startNode);
     }
 }
 
@@ -570,40 +603,46 @@ function run_astar() {
         }
         currentNode = lowestNode;
         // Check if current node is destination
-        if (currentNode === currentEndNode) {
+        if (currentNode === endNode) {
             finished = true;
             queue = [];
             started = false;
             return;
         }
-        // Add current node to the closed set and remove it from queue
-        closedNodes.push(currentNode);
+        // Remove current from queue and add it to the closed set
         let currentNodeIndex = queue.map(function (item) { return item; }).indexOf(currentNode);
         queue.splice(currentNodeIndex, 1);
+        closedNodes.push(currentNode);
         // Set current node's state as visited
         markState(currentNode, 4);
-        // For each valid node adjacent to the current node
+        // Look at the node's neighbrs
         for (node of currentNode.neighbors) {
-            // Ignore nodes that are already in the closed set
-            if (closedNodes.includes(node)) {
-                continue;
-            }
-            // Create temporary values
-            let tempG = currentNode.g + getDistance(node, currentNode);
-            // If there's a node in the open set, ignore it if it's g score is less than this score, since it's better already
-            if (queue.includes(node)) {
-                if (tempG > node.g) {
-                    continue;
+            if (!closedNodes.includes(node)) {
+                gScore = currentNode.g + getDistance(node, currentNode);
+                // If node is already in queue
+                if (queue.includes(node)) {
+                    // If this g score is better than the node's g score, change it
+                    if (gScore < node.g) {
+                        // Set scores
+                        node.g = gScore;
+                        node.f = node.g + node.h;
+                        node.parent = currentNode;
+                    }
+                } else {
+                    // Set scores
+                    node.g = gScore;
+                    node.h = getDistance(node, endNode);
+                    node.f = node.g + node.h;
+                    node.parent = currentNode;
+                    // Add node to queue
+                    queue.push(node);
+                    // Set current node's state as unvisited
+                    markState(node, 3);
+                    // Debug
+                    console.log("Added neigbor with scores: ")
+                    console.log("g: " + node.g + "h: " + node.h + "f: " + node.f);
                 }
             }
-            // If none of these conditions are met, add neighbor to the queue
-            node.g = tempG;
-            node.h = getDistance(node, currentEndNode);
-            node.f = node.g + node.h;
-            node.parent = currentNode;
-            queue.push(node);
-            // Set current node's state as visited
-            markState(node, 3);
         }
     } else {
         console.log("No solution.");
@@ -621,7 +660,7 @@ function run_bfs() {
         // Change node's state to visited
         markState(currentNode, 4);
         // If current node is the destination, end search
-        if (currentNode == currentEndNode) {
+        if (currentNode == endNode) {
             finished = true;
             queue = [];
             started = false;
@@ -659,7 +698,7 @@ function run_dfs() {
         // Change node's state to visited
         markState(currentNode, 4);
         // Check if current node is destination
-        if (currentNode == currentEndNode) {
+        if (currentNode == endNode) {
             finished = true;
             queue = [];
             started = false;
@@ -698,7 +737,7 @@ function run_greedy() {
         // Set node state to visited
         markState(currentNode, 4);
         // Check if current node is the destination
-        if (currentNode === currentEndNode) {
+        if (currentNode === endNode) {
             finished = true;
             queue = [];
             started = false;
@@ -713,7 +752,7 @@ function run_greedy() {
             // Ignore nodes if they're already in the closed set or in the open set
             if (!closedNodes.includes(neighbor) && !queue.includes(neighbor)) {
                 // Calculate h of the node and set it's parent to the current node
-                neighbor.h = getDistance(neighbor, currentEndNode);
+                neighbor.h = getDistance(neighbor, endNode);
                 neighbor.parent = currentNode;
                 // Add node to queue
                 queue.push(neighbor);
@@ -775,29 +814,29 @@ function mousePressed() {
                 if (mouseX >= graph[i][j].x && mouseX <= graph[i][j].x + graph[i][j].size && mouseY >= graph[i][j].y && mouseY <= graph[i][j].y + graph[i][j].size) {
                     // Avoid duplicate start nodes
                     if (selectedNodeType == 0) {
-                        if (currentStartNode != null) {
-                            currentStartNode.state = 6;
-                            currentStartNode.assigned = false;
+                        if (startNode != null) {
+                            startNode.state = 6;
+                            startNode.assigned = false;
                         }
-                        currentStartNode = graph[i][j];
-                        currentStartNode.state = selectedNodeType;
-                        currentStartNode.assigned = true;
+                        startNode = graph[i][j];
+                        startNode.state = selectedNodeType;
+                        startNode.assigned = true;
                         // Avoid duplicate end nodes
                     } else if (selectedNodeType == 1) {
-                        if (currentEndNode != null) {
-                            currentEndNode.state = 6;
-                            currentEndNode.assigned = false;
+                        if (endNode != null) {
+                            endNode.state = 6;
+                            endNode.assigned = false;
                         }
-                        currentEndNode = graph[i][j];
-                        currentEndNode.state = selectedNodeType;
-                        currentEndNode.assigned = true;
+                        endNode = graph[i][j];
+                        endNode.state = selectedNodeType;
+                        endNode.assigned = true;
                         // Add obstacle node
                     } else {
                         // Check if one of the cells is a start node or an end node
                         if (graph[i][j].state == 0) {
-                            currentStartNode = null;
+                            startNode = null;
                         } else if (graph[i][j].state == 1) {
-                            currentEndNode = null;
+                            endNode = null;
                         }
                         // Add / remove the node's assigned state depending on the current selection
                         if (selectedNodeType == 6) {
@@ -821,9 +860,9 @@ function mouseDragged() {
                     if (mouseX >= graph[i][j].x && mouseX <= graph[i][j].x + graph[i][j].size && mouseY >= graph[i][j].y && mouseY <= graph[i][j].y + graph[i][j].size) {
                         // Check if one of the cells is a start node or an end node
                         if (graph[i][j].state == 0) {
-                            currentStartNode = null;
+                            startNode = null;
                         } else if (graph[i][j].state == 1) {
-                            currentEndNode = null;
+                            endNode = null;
                         }
                         // Add obstacle/empty nodes
                         if (selectedNodeType == 6) {
