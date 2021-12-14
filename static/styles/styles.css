@@ -6,7 +6,7 @@
     height: 20px;
     width: 20px;
     margin-right: 10px;
-    border-radius: 5px;
+    border-radius: 8px;
 }
 
 /* Body coloring */
@@ -21,16 +21,6 @@ body {
     background-color: #141414;
 }
 
-canvas {
-    padding: 0;
-    margin: auto;
-    display: block;
-    position: absolute;
-    top: 25%;
-    bottom: 0;
-    right: 3.1%;
-    box-shadow: 0 0 35px rgb(0, 0, 0, 0.5);
-}
 
 p {
     font-weight: normal;
@@ -60,7 +50,17 @@ ul:hover {
 
 .upper-content {
     background: #0e1d30;
+    width: 100%;
     margin: 0;
+}
+
+.description {
+    font-family: 'Fira Code', monospace;
+    color: rgb(255, 199, 46);
+    font-size: medium;
+    padding-top: 25px;
+    text-align: center;
+    text-shadow: 1px 1px 20px #fffb18;
 }
 
 .navbar {
@@ -90,6 +90,66 @@ li a, .dropbtn {
     display: inline-block;
     text-align: center;
     text-decoration: none;
+}
+
+li img {
+    display: inline-block;
+    max-width: 0px;
+    max-height: 0px;
+    position: relative;
+    opacity: 0.0;
+    transition: 0.3s;
+}
+
+li span {
+    position: relative;
+    display: block;
+}
+
+li span:nth-child(1) {
+    top: -6px;
+    left: -125%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent,#21c4ff);
+}
+
+li span:nth-child(2) {
+    bottom: -28px;
+    left: 125%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(-90deg, transparent,#21c4ff);
+}
+
+li:hover {
+    background: #21c4ff;
+    color: #0e1d30;
+    box-shadow: 0 0 10px #21c4ff, 
+                0 0 40px #21c4ff,
+                0 0 80px #21c4ff;
+    transition-delay: 0.25s;
+}
+
+li:hover img {
+    max-width: 15px;
+    max-height: 15px;
+    display: inline-block;
+    opacity: 1.0;
+}
+
+li:hover span:nth-child(1) {
+    left: 100%;
+    transition: 0.25s;
+}
+
+li:hover span:nth-child(2) {
+    left: -100%;
+    transition: 0.25s;
+}
+
+li.active {
+    background: #eb831c;
 }
 
 li.dropdown {
@@ -134,50 +194,6 @@ li.dropdown {
 
 .dropdown:hover .dropdown-content {
     display: block;
-}
-
-li:hover {
-    background: #21c4ff;
-    color: #0e1d30;
-    box-shadow: 0 0 10px #21c4ff, 
-                0 0 40px #21c4ff,
-                0 0 80px #21c4ff;
-    transition-delay: 0.25s;
-}
-
-li span {
-    position: relative;
-    display: block;
-}
-
-li span:nth-child(1) {
-    top: -6px;
-    left: -125%;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent,#21c4ff);
-}
-
-li:hover span:nth-child(1) {
-    left: 100%;
-    transition: 0.25s;
-}
-
-li span:nth-child(2) {
-    bottom: -28px;
-    left: 125%;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(-90deg, transparent,#21c4ff);
-}
-
-li:hover span:nth-child(2) {
-    left: -100%;
-    transition: 0.25s;
-}
-
-li.active {
-    background: #eb831c;
 }
 
 .grid-container {
@@ -249,6 +265,20 @@ li.active {
     color: #ffda33;
     font-size: larger;  
     text-shadow: 1px 1px 25px rgb(255, 255, 255);
+}
+
+.visualizer {
+    margin-top: 0;
+    padding-top: 0;
+    width: 100%;
+    height: 100vh;
+    position: relative;
+    text-align: center;
+}
+
+canvas {
+    box-shadow: 0 0 35px rgb(0, 154, 192, 0.5);
+    border-radius: 10px;
 }
 
 @keyframes neon {

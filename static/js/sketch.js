@@ -1,6 +1,7 @@
 /* Initialize canvas size */
-let canvasWidth = 1800;
-let canvasHeight = 700;
+let cnv;
+let canvasWidth = 1900;
+let canvasHeight = 969;
 
 /* Create a grid to store the nodes' data */
 let graph = [];
@@ -16,50 +17,68 @@ let canShowPath = false;
 
 /* Algorithm variables */
 let path = [] // Path followed by the algorithm
-let selectedAlgorithm = null; // 0 = Dijkstra's | 1 = A* | 2 = BFS | 3 = DFS | 4 = Prim's | 5 = Greedy
+let selectedAlgorithm = null; // 0 = Dijkstra's | 1 = A* | 2 = BFS | 3 = DFS | 4 = Greedy
 let currentNode = null; // Current node being explored
 let queue = []; // BFS queue
 let closedNodes = [];
+let gScore = -Infinity;
+let dScore = Infinity;
 let finished = false;
 let pathLine = undefined;
 
-/* Initialize square size */
-let squareSize = 25;
-
-/* Initialize columns and rows */
+/* Initialize canvas elements' size*/
+let desiredCols = 80;
+let desiredRows = 29;
+let squareSize = canvasWidth / desiredCols;
 let cols = canvasWidth / squareSize;
-let rows = canvasHeight / squareSize;
+let rows = desiredRows;
 
 /* Initialize colors */
 let idleColor = [0, 0, 0];
 let hoverColor = [255, 255, 255];
-let startColor = [33, 148, 255];
+let startColor = [0, 74, 179];
 let endColor = [219, 0, 216];
 let obstacleColor = [224, 224, 224];
-let unvisitedColor = [255, 51, 68];
-let visitedColor = [255, 145, 154];
-let pathColor = [55, 166, 0];
+let unvisitedColor = [0, 162, 255];
+let visitedColor = [163, 217, 255];
+let pathColor = [33, 144, 255];
+
+/* Maze variables */
+let randomObstacleProportion = 0.3;
 
 /* Initialize node attributes */
 class Node {
     constructor(col, row) {
+        // Actual column and row numbers
         this.c = col;
         this.r = row;
-        this.size = canvasWidth / cols;
+        // Size, color and states
+        this.size = squareSize;
+        this.currSize = squareSize;
         this.color = [0, 0, 0];
         this.assigned = false;
         this.state = 6; // 0 = start | 1 = end | 2 = obstacle | 3 = unvisited | 4 = visited | 5 = path | 6 = idle | 7 = hovered 
-
+        this.lastState = this.state;
+        // Position in canvas
         this.x = col * this.size;
         this.y = row * this.size;
-
+        // Algorithmic attributes
         this.parent = undefined;
         this.neighbors = [];
-
+        // Heuristics
+        // A* and Greedy BFS
+        this.f = 0;
+        this.g = 0;
+        this.h = 0;
+        // Dijkstra
+        this.d = Infinity;
+        // Display node in canvas
         this.show = function () {
             noStroke();
+            // If mouse is hovering over the node
             if (mouseX >= this.x && mouseX <= this.x + this.size && mouseY >= this.y && mouseY <= this.y + this.size) {
                 if (!started) {
+                    // If node hasn't been assigned yet, set color to the selected node type's color
                     if (!this.assigned) {
                         this.state = selectedNodeType;
                     }
@@ -71,11 +90,26 @@ class Node {
                     }
                 }
             }
+            // Change node's color according to it's state
             this.changeColor();
-            rect(this.x, this.y, this.size, this.size, 10);
+            // Grow node's size if necessary
+            this.grow();
+            // Display rectangle with current size
+            rect(this.x, this.y, this.currSize, this.currSize, 10);
         };
-
+        // Growth animation
+        this.grow = function () {
+            // If size is less than desired node size
+            if (this.currSize < squareSize) {
+                if (!this.assigned) {
+                    this.currSize = this.currSize + 2.5;
+                }
+                this.currSize = this.currSize + 1.0;
+            }
+        }
+        // Update neighbors when an algorith is about to be executed
         this.updateNeighbors = function () {
+            // Cardinal
             // Left neighbor
             if (this.c > 0) {
                 let node = graph[this.c - 1][this.r];
@@ -106,8 +140,14 @@ class Node {
             }
         }
     }
-
+    // Change color attribute depending on the node's state
     changeColor() {
+        // If state has been changed, set size to 0 to see growth animation
+        if (this.lastState != this.state) {
+            this.currSize = 0.0;
+        }
+        // Set last state to this state again
+        this.lastState = this.state;
         switch (this.state) {
             case 0:
                 this.color = startColor;
@@ -138,16 +178,75 @@ class Node {
     }
 }
 
+// Initialize canvas attributes and global values
 function setup() {
     // Create canvas
-    createCanvas(canvasWidth, canvasHeight);
+    canvasWidth = windowWidth * 0.98;
+    squareSize = canvasWidth / desiredCols;
+    canvasHeight = squareSize * desiredRows;
+    cnv = createCanvas(canvasWidth, canvasHeight);
+    cnv.parent('visualizer');
+    // Initialize graph
+    createGraph();
+    // Randomize start and end nodes
+    randomizeMainPoints();
+}
+
+// Canvas' main loop
+function draw() {
+    // Set background color
+    background(0);
+    // Activate when started
+    if (started) {
+        if (selectedAlgorithm === 0) {
+            run_dijsktra();
+        } else if (selectedAlgorithm === 1) {
+            run_astar();
+        } else if (selectedAlgorithm === 2) {
+            run_bfs();
+        } else if (selectedAlgorithm === 3) {
+            run_dfs();
+        } else if (selectedAlgorithm === 4) {
+            run_greedy();
+        }
+    }
+    // Display nodes from graph
+    showGraph();
+    // Avoid showing path when canvas is cleared or is editable
+    if (canShowPath) {
+        drawPath();
+    }
+}
+
+// Center the canvas according to the window's scale
+function centerCanvas() {
+    x = (windowWidth - width) / 2;
+    y = 35; //(windowHeight - height) / 2;
+    cnv.position(x, y);
+}
+
+// Change canvas' scale and nodes' sizes according to the window's scale
+function setNewCanvasSize() {
+    // Reset canvas size
+    canvasWidth = windowWidth * 0.9375;
+    squareSize = canvasWidth / desiredCols;
+    canvasHeight = squareSize * desiredRows;
+    resizeCanvas(canvasWidth, canvasHeight);
+    // Create new graph with more elements
+    cols = canvasWidth / squareSize;
+    rows = desiredRows;
+    createGraph();
+    // Center canvas
+    centerCanvas();
+}
+
+// Set a random position for the initial and the destination nodes
+function randomizeMainPoints() {
     // Initialize random positions for start and end nodes
     randomStartX = randInt(0, cols);
     randomStartY = randInt(0, rows);
     randomEndX = randInt(0, cols);
     randomEndY = randInt(0, rows);
-    // Initialize graph
-    createGraph();
     // Draw start and end nodes
     currentStartNode = graph[randomStartX][randomStartY];
     currentEndNode = graph[randomEndX][randomEndY];
@@ -157,25 +256,8 @@ function setup() {
     graph[randomEndX][randomEndY].assigned = true;
 }
 
-function draw() {
-    // Set background color
-    background(0);
-    // Activate when started
-    if (started) {
-        if (selectedAlgorithm == 2) {
-            run_bfs();
-        } else if (selectedAlgorithm == 3) {
-            run_dfs();
-        }
-    }
-    // Display nodes from graph
-    showGraph();
-    if (canShowPath) {
-        drawPath();
-    }
-}
-
 /* UI Functions */
+// All of these change the node to be drawn in the canvas depending on the selection under the NavBar in the DOM
 function chooseStart() {
     selectedNodeType = 0;
 }
@@ -192,43 +274,54 @@ function chooseEraser() {
     selectedNodeType = 6;
 }
 
+// Change the algorithm to be run depending on the selection under the Algorithms tab in the DOM
 function chooseAlgorithm(algNum) {
-    selectedAlgorithm = algNum;
+    if (!started) {
+        selectedAlgorithm = algNum;
+    }
     let newTitle = "";
+    let newSubtitle = "Select an algorithm.";
     switch (selectedAlgorithm) {
         case 0:
             newTitle = "Dijkstra's Algorithm Visualizer"
+            newSubtitle = "Specially good to use when the destination's location is unknown, it uses the distance between each node to determine the best path to follow.";
             break;
         case 1:
             newTitle = "A* Algorithm Visualizer"
+            newSubtitle = "Specially useful in complex paths, considers the distance between each node and the starting point, as well as the destination. Used when the destination's location is known.";
             break;
         case 2:
             newTitle = "BFS Algorithm Visualizer"
+            newSubtitle = "Guarantees the shortest path, although it's better to use it only when the destination is close to the starting point since it evaluates almost every node in between.";
             break;
         case 3:
             newTitle = "DFS Algorithm Visualizer"
+            newSubtitle = "DFS is better when the path is complex and there's most likely only one way out, assuming that the destination is far from the starting point.";
             break;
         case 4:
-            newTitle = "Prim's Algorithm Visualizer"
-            break;
-        case 5:
             newTitle = "Greedy Algorithm Visualizer"
+            newSubtitle = "Greedy best-first search takes into account only the distance between each node and the destination, a little less optimal than A* in complex paths.";
             break;
         default:
             newTitle = document.getElementById('titlename').textContent;
+            newSubtitle = document.getElementById('subtitle').textContent;
     }
     document.getElementById('titlename').textContent = newTitle;
+    document.getElementById('subtitle').textContent = newSubtitle;
 }
 
+// Executed when the DOM's Start button is pressed
 function start() {
-    // If simulation hasn't started
+    // If simulation hasn't been started yet
     if (!started) {
-
         // Both the start node and the end node must be already chosen
         if (currentStartNode != null && currentEndNode != null) {
             // Set finished to false
             started = true;
             finished = false;
+            // Reset queue and closed set
+            queue = [];
+            closedNodes = [];
             // Start neighbors
             for (let i = 0; i < cols; i++) {
                 for (let j = 0; j < rows; j++) {
@@ -237,28 +330,17 @@ function start() {
             }
             // Make initial algorithm operations
             canShowPath = true;
-            switch (selectedAlgorithm) {
-                case 0:
-                    break;
-                case 1:
-                    break;
-                case 2: // BFS
-                    init_bfs();
-                    loop();
-                    break;
-                case 3:
-                    init_bfs();
-                    loop();
-                    break;
-                case 4:
-                    break;
-                case 5:
-                    break;
-                default:
-                    alert("You need to choose an algorithm!")
-                    canShowPath = false;
-                    started = false;
-                    return;
+            if (selectedAlgorithm > 0 && selectedAlgorithm < 5) {
+                // Initialize BFS, DFS, A* or Greedy BFS
+                init_algorithm();
+                loop();
+            } else if (selectedAlgorithm == 0) {
+                // Initialize Dijsktra's algorithm
+                init_dijkstra();
+            } else {
+                canShowPath = false;
+                started = false;
+                alert("You need to choose an algorithm!")
             }
             starts++;
         } else {
@@ -267,9 +349,9 @@ function start() {
     }
 }
 
-
+// Stop the algorithm's execution
 function end() {
-    // If algorithm has already started
+    // If algorithm has already been started
     if (started) {
         // End the algorithm
         started = false;
@@ -279,10 +361,12 @@ function end() {
 }
 
 /* Graph manipulation functions */
+// Get a random integer
 function randInt(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
 }
 
+// Fill graph with nodes
 function createGraph() {
     for (let i = 0; i < cols; i++) {
         graph[i] = new Array()
@@ -292,6 +376,7 @@ function createGraph() {
     }
 }
 
+// Display the graph's nodes
 function showGraph() {
     for (let i = 0; i < graph.length; i++) {
         for (let j = 0; j < graph[i].length; j++) {
@@ -300,6 +385,7 @@ function showGraph() {
     }
 }
 
+// Set every node's state to idle except for obstacle, start and destination nodes
 function restartGraph() {
     if (!started) {
         // Delete path
@@ -312,6 +398,9 @@ function restartGraph() {
             for (let j = 0; j < rows; j++) {
                 if (graph[i][j].state != 0 && graph[i][j].state != 1 && graph[i][j].state != 2) {
                     graph[i][j].state = 6;
+                    graph[i][j].f = 0;
+                    graph[i][j].g = 0;
+                    graph[i][j].h = 0;
                     graph[i][j].assigned = false;
                     graph[i][j].neighbors = [];
                 }
@@ -320,15 +409,20 @@ function restartGraph() {
     }
 }
 
+// Set every node's state to idle (no exceptions)
 function clearGraph() {
+    // Clear waypoints
     path = [];
     if (!started) {
-        // Delete path
+        // Delete path visualization
         canShowPath = false;
         // Set all nodes as idle
         for (let i = 0; i < cols; i++) {
             for (let j = 0; j < rows; j++) {
                 graph[i][j].state = 6;
+                graph[i][j].f = 0;
+                graph[i][j].g = 0;
+                graph[i][j].h = 0;
                 graph[i][j].assigned = false;
                 graph[i][j].neighbors = [];
             }
@@ -343,16 +437,181 @@ function clearGraph() {
     }
 }
 
-/* Algorithm functions */
-// BFS
-
-function init_bfs() {
-    // Empty the queue before using it
-    queue = [];
-    // Add root node to queue
-    queue.push(currentStartNode);
+// Remove every obstacle from graph
+function removeObstacles() {
+    if (!started) {
+        // Delete path
+        canShowPath = false;
+        // Reset queues and sets
+        queue = [];
+        closedNodes = [];
+        // Set all obstacle nodes as idle
+        for (let i = 0; i < cols; i++) {
+            for (let j = 0; j < rows; j++) {
+                if (graph[i][j].state == 2) {
+                    graph[i][j].state = 6;
+                    graph[i][j].f = 0;
+                    graph[i][j].g = 0;
+                    graph[i][j].h = 0;
+                    graph[i][j].assigned = false;
+                    graph[i][j].neighbors = [];
+                }
+            }
+        }
+    }
 }
 
+function getDistance(n1, n2) {
+    // Euclidean
+    let x_distance = Math.pow(n2.c - n1.c, 2);
+    let y_distance = Math.pow(n2.r - n1.r, 2);
+    // Cartesian
+    /* let x_distance = Math.abs(n1.c - n2.c);
+    let y_distance = Math.abs(n1.r - n2.r); */
+    return x_distance + y_distance;
+}
+
+function markState(node, state) {
+    // Set node's state to this state
+    if (node.state != 0 && node.state != 1) {
+        node.state = state;
+        node.assigned = true;
+    }
+}
+
+/* Algorithm functions */
+// Initialize Dijkstra's algorithm
+function init_dijkstra() {
+    // Reset lowestNode and score
+    lowestNode = undefined;
+    dScore = Infinity;
+    // Set start node's d score to 0
+    currentStartNode.d = 0;
+    // Add every node from the graph to the queue
+    for (let i = 0; i < graph.length; i++) {
+        for (let j = 0; j < graph[i].length; j++) {
+            if (graph[i][j] !== currentStartNode) {
+                graph[i][j].d = Infinity;
+            }
+            queue.push(graph[i][j]);
+        }
+    }
+}
+
+// Run Dijkstra
+function run_dijsktra() {
+    // While the queue has elements
+    if (queue.length > 0) {
+        // Look for the node with the lowest d score
+        let lowestNode = queue[0];
+        for (node of queue) {
+            if (node.d < lowestNode.d) {
+                lowestNode = node;
+            }
+        }
+        // Set lowest d score node as current node
+        currentNode = lowestNode;
+        console.log(currentNode);
+        // If current d score is infinity, stop execution since there is no possible path to the next node
+        if (currentNode.d === Infinity) {
+            console.log("No solution.")
+            started = false;
+        }
+        // Check if current node is already the destination
+        if (currentNode === currentEndNode) {
+            finished = true;
+            queue = [];
+            started = false;
+            return;
+        }
+        // Remove current node from queue and add it to closed set
+        let currentNodeIndex = queue.map(function (item) { return item; }).indexOf(currentNode);
+        queue.splice(currentNodeIndex, 1);
+        closedNodes.push(currentNode);
+        // Set current node's state as visited
+        markState(currentNode, 4);
+        // Visit every neighbor from current node
+        for (neighbor of currentNode.neighbors) {
+            if (!closedNodes.includes(neighbor)) {
+                // Mark neighbor as unvisited
+                markState(neighbor, 3);
+            }
+            // Get d score from current node to neighbor
+            dScore = currentNode.d + getDistance(neighbor, currentStartNode);
+            // If this d score is lower than the neighbor's d score, set the neighbor's d score to the current d score
+            if (dScore < neighbor.d) {
+                neighbor.d = dScore;
+                neighbor.parent = currentNode;
+            }
+        }
+    }
+}
+
+// A*/BFS/DFS/Greedy queue/stack initialization
+function init_algorithm() {
+    // Add root node to queue
+    queue.push(currentStartNode);
+    // If the algorithm is DFS or BFS, add starting point to closed set
+    if (selectedAlgorithm == 2 || selectedAlgorithm == 3) {
+        closedNodes.push(currentStartNode);
+    }
+}
+
+// A* execution
+function run_astar() {
+    // Execute while the queue is not empty
+    if (queue.length > 0) {
+        // Look for the lowest f-score node in the queue and set it as the current node
+        let lowestNode = queue[0];
+        for (node of queue) {
+            if (node.f < lowestNode.f) {
+                lowestNode = node;
+            }
+        }
+        currentNode = lowestNode;
+        // Check if current node is destination
+        if (currentNode === currentEndNode) {
+            finished = true;
+            queue = [];
+            started = false;
+            return;
+        }
+        // Add current node to the closed set and remove it from queue
+        closedNodes.push(currentNode);
+        let currentNodeIndex = queue.map(function (item) { return item; }).indexOf(currentNode);
+        queue.splice(currentNodeIndex, 1);
+        // Set current node's state as visited
+        markState(currentNode, 4);
+        // For each valid node adjacent to the current node
+        for (node of currentNode.neighbors) {
+            // Ignore nodes that are already in the closed set
+            if (closedNodes.includes(node)) {
+                continue;
+            }
+            // Create temporary values
+            let tempG = currentNode.g + getDistance(node, currentNode);
+            // If there's a node in the open set, ignore it if it's g score is less than this score, since it's better already
+            if (queue.includes(node)) {
+                if (tempG > node.g) {
+                    continue;
+                }
+            }
+            // If none of these conditions are met, add neighbor to the queue
+            node.g = tempG;
+            node.h = getDistance(node, currentEndNode);
+            node.f = node.g + node.h;
+            node.parent = currentNode;
+            queue.push(node);
+            // Set current node's state as visited
+            markState(node, 3);
+        }
+    } else {
+        console.log("No solution.");
+        started = false;
+    }
+}
+
+// Execute BFS
 function run_bfs() {
     if (queue.length > 0) {
         // Set current node
@@ -360,10 +619,7 @@ function run_bfs() {
         // Add current node to closed nodes
         closedNodes.push(currentNode);
         // Change node's state to visited
-        if (currentNode.state != 0 && currentNode.state != 1) {
-            currentNode.state = 4;
-            currentNode.assigned = true;
-        }
+        markState(currentNode, 4);
         // If current node is the destination, end search
         if (currentNode == currentEndNode) {
             finished = true;
@@ -382,10 +638,7 @@ function run_bfs() {
                 // Set node's parent
                 neighbor.parent = currentNode;
                 // Set node's state to unvisited
-                if (neighbor.state != 0 && neighbor.state != 1) {
-                    neighbor.state = 3;
-                    neighbor.assigned = true;
-                }
+                markState(neighbor, 3);
             }
         }
         // Remove current node from queue
@@ -396,6 +649,7 @@ function run_bfs() {
     }
 }
 
+// Execute DFS
 function run_dfs() {
     // If queue's length is more than 0
     if (queue.length > 0) {
@@ -403,10 +657,7 @@ function run_dfs() {
         currentNode = queue[queue.length - 1];
         closedNodes.push(currentNode);
         // Change node's state to visited
-        if (currentNode.state != 0 && currentNode.state != 1) {
-            currentNode.state = 4;
-            currentNode.assigned = true;
-        }
+        markState(currentNode, 4);
         // Check if current node is destination
         if (currentNode == currentEndNode) {
             finished = true;
@@ -415,7 +666,7 @@ function run_dfs() {
             return;
         }
         // Remove last element
-        let currentNodeIndex = queue.map(function (item) {return item;}).indexOf(currentNode);
+        let currentNodeIndex = queue.map(function (item) { return item; }).indexOf(currentNode);
         queue.splice(currentNodeIndex, 1);
         // Add neighbors to queue
         for (neighbor of currentNode.neighbors) {
@@ -423,10 +674,7 @@ function run_dfs() {
                 queue.push(neighbor);
                 closedNodes.push(neighbor);
                 // Set node's state to unvisited
-                if (neighbor.state != 0 && neighbor.state != 1) {
-                    neighbor.state = 3;
-                    neighbor.assigned = true;
-                }
+                markState(neighbor, 3);
                 neighbor.parent = currentNode;
             }
         }
@@ -436,36 +684,81 @@ function run_dfs() {
     }
 }
 
-
-function drawPath() {
-    // Empty path
-    path = [];
-    // Only check nodes after first start
-    if (starts > 0) {
-        // Temporary value to store current node and it's parents
-        let temp = currentNode;
-        path.push(temp);
-        // While there are still parents
-        while (true) {
-            if (temp.parent === undefined) {
-                break;
-            } else {
-                // Add parents to path
-                path.push(temp.parent);
-                temp = temp.parent;
+function run_greedy() {
+    // While there are still elements in queue
+    if (queue.length > 0) {
+        // Look for the node with the lowest distance to the goal
+        let lowestNode = queue[0];
+        for (node of queue) {
+            if (node.h < lowestNode.h) {
+                lowestNode = node;
             }
         }
-    }
-    // After adding cells to path, draw line between nodes
-    if (path.length > 0) {
-        noFill();
-        stroke(pathColor);
-        strokeWeight(8);
-        beginShape();
-        for (node of path) {
-            vertex(node.x + node.size / 2, node.y + node.size / 2);
+        currentNode = lowestNode;
+        // Set node state to visited
+        markState(currentNode, 4);
+        // Check if current node is the destination
+        if (currentNode === currentEndNode) {
+            finished = true;
+            queue = [];
+            started = false;
+            return;
         }
-        endShape();
+        // Remove current node from queue and add it to closed set
+        let currentNodeIndex = queue.map(function (item) { return item; }).indexOf(currentNode);
+        queue.splice(currentNodeIndex, 1);
+        closedNodes.push(currentNode);
+        // Explore neighbors
+        for (neighbor of currentNode.neighbors) {
+            // Ignore nodes if they're already in the closed set or in the open set
+            if (!closedNodes.includes(neighbor) && !queue.includes(neighbor)) {
+                // Calculate h of the node and set it's parent to the current node
+                neighbor.h = getDistance(neighbor, currentEndNode);
+                neighbor.parent = currentNode;
+                // Add node to queue
+                queue.push(neighbor);
+                // Mark node as unvisited
+                markState(neighbor, 3);
+            }
+        }
+    } else {
+        console.log("No solution.");
+        started = false;
+    }
+}
+
+function drawPath() {
+    // Appear only if finished
+    if (finished) {
+        // Empty path
+        path = [];
+        // Only check nodes after first start
+        if (starts > 0) {
+            // Temporary value to store current node and it's parents
+            let temp = currentNode;
+            path.push(temp);
+            // While there are still parents
+            while (true) {
+                if (temp.parent === undefined) {
+                    break;
+                } else {
+                    // Add parents to path
+                    path.push(temp.parent);
+                    temp = temp.parent;
+                }
+            }
+        }
+        // After adding cells to path, draw line between nodes
+        if (path.length > 0) {
+            noFill();
+            stroke(pathColor);
+            strokeWeight(8);
+            beginShape();
+            for (node of path) {
+                vertex(node.x + node.size / 2, node.y + node.size / 2);
+            }
+            endShape();
+        }
     }
 }
 
@@ -539,6 +832,40 @@ function mouseDragged() {
                             graph[i][j].assigned = true;
                         }
                         graph[i][j].state = selectedNodeType;
+                    }
+                }
+            }
+        }
+    }
+}
+
+function windowResized() {
+    setNewCanvasSize();
+    randomizeMainPoints();
+}
+
+/* Maze generation */
+function canBeObstacle() {
+    let randomNumber = randInt(0, 10);
+    let likeliness = Math.floor(randomObstacleProportion * 10);
+    if (randomNumber < likeliness) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function generateRandomMaze() {
+    if (!started) {
+        removeObstacles();
+        let createObstacle = false;
+        for (let i = 0; i < graph.length; i++) {
+            for (let j = 0; j < graph[i].length; j++) {
+                if (graph[i][j].state != 0 && graph[i][j].state != 1) {
+                    createObstacle = canBeObstacle();
+                    if (createObstacle) {
+                        graph[i][j].state = 2;
+                        graph[i][j].assigned = true;
                     }
                 }
             }

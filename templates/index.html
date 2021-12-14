@@ -13,11 +13,11 @@
         <div class="upper-content">
             <div class="grid-container">
                 <div class="grid-header">
-                    <h1><span id="titlename">Pathfinding Algorithms Visualizer</span></h1>
+                    <h1><span id="titlename" onclick="window.open('https://en.wikipedia.org/wiki/Pathfinding', '_blank')">Pathfinding Algorithms Visualizer</span></h1> 
                 </div>
-                    <div class="grid-subheader">
-                        choose from multiple <span class="keyword">algorithms</span> and create your own <span class="keyword">path</span>! 
-                    </div>
+                <div class="grid-subheader">
+                    choose from multiple <span class="keyword">algorithms</span> and create your own <span class="keyword">path</span>! 
+                </div>
             </div>
         </div>
         <!-- Navigation bar -->
@@ -32,8 +32,15 @@
                         <a onclick="chooseAlgorithm(1)">A*</a>
                         <a onclick="chooseAlgorithm(2)">BFS</a>
                         <a onclick="chooseAlgorithm(3)">DFS</a>
-                        <a onclick="chooseAlgorithm(4)">Prim's</a>
-                        <a onclick="chooseAlgorithm(5)">Greedy</a>
+                        <a onclick="chooseAlgorithm(4)">Greedy</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <span></span>
+                    <span></span>
+                    <a class="dropbtn">Mazes</a>
+                    <div class="dropdown-content">
+                        <a onclick="generateRandomMaze()">Random maze</a>
                     </div>
                 </li>
                 <li onclick="clearGraph()">
@@ -51,19 +58,20 @@
                     <span></span>
                     End
                 </li>
-                <li onclick="location.href='https://github.com/joeirigoyen/PathfindingVisualizer'">
+                <li onclick="window.open('https://github.com/joeirigoyen/PathfindingVisualizer', '_blank')">
                     <span></span>
                     <span></span>
                     <span></span>
                     <span></span>
-                    About
+                    <img src="../static/giticon.png" alt="Project repository"> About
                 </li>
             </ul>
         </div>
+        <div id="subtitle" class="description">Select an algorithm</div>
         <!-- Sidenotes -->
         <div class="sidenotes">
             <div class="flex-container">
-                <div class="square" style="background-color: #2194ff;"></div>
+                <div class="square" style="background-color: #004ab3;"></div>
                 <span class="sidenote"><span class="hoverable" onclick="chooseStart()">Starting point</span></span>
                 <div class="square" style="background-color: #db00d8;"></div>
                 <span class="sidenote"><span class="hoverable" onclick="chooseDestination()">Destination</span></span>
@@ -71,15 +79,13 @@
                 <span class="sidenote"><span class="hoverable" onclick="chooseObstacles()">Obstacle</span></span>
                 <div class="square" style="background-color: #000000;"></div>
                 <span class="sidenote"><span class="hoverable" onclick="chooseEraser()">Erase</span></span>
-                <div class="square" style="background-color: #ff919a;"></div>
+                <div class="square" style="background-color: #a3d9ff;"></div>
                 <span class="sidenote">Visited node</span>
-                <div class="square" style="background-color: #ff3344;"></div>
+                <div class="square" style="background-color: #00a2ff;"></div>
                 <span class="sidenote">Unvisited node</span>
-                <div class="square" style="background-color: #ffa600;"></div>
-                <span class="sidenote">Path</span>
             </div>
         </div>
-        <div id="visualizer" style="position: relative;">
+        <div id="visualizer" class="visualizer">
             <!-- Import javascript files -->
             <script src="{{ url_for('static', filename='js/sketch.js') }}"></script>
         </div>
