@@ -3,3 +3,5 @@
 
 # Flask Framework
 Flask==1.0.2
+# Gunicorn (if needed)
+gunicorn
