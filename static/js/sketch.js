@@ -33,7 +33,7 @@ let pathLine = undefined;
 
 /* Initialize canvas elements' size*/
 let desiredCols = 80;
-let desiredRows = 29;
+let desiredRows = 28;
 let squareSize = canvasWidth / desiredCols;
 let cols = canvasWidth / squareSize;
 let rows = desiredRows;
